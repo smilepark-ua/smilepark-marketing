@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smile Park · Маркетинг Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --purple:#8431F5;
+  --purple-dark:#6B21E8;
+  --purple-light:#F3EBFE;
+  --purple-pale:#FAF7FE;
+  --bg:#F7F5FB;
+  --card:#FFFFFF;
+  --text:#1F1B2E;
+  --text-2:#6B6478;
+  --text-3:#9992A8;
+  --border:#ECE7F5;
+  --green:#16A34A;
+  --green-bg:#EAFBF1;
+  --red:#DC2626;
+  --red-bg:#FDECEC;
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow:0 4px 24px rgba(132,49,245,.08);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);}
+a{color:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:#DCD3F0;border-radius:8px;}
+
+/* Layout */
+.app{display:none;min-height:100vh;}
+.app.unlocked{display:flex;}
+.sidebar{width:250px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh;}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 22px;}
+.brand-badge{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#B37CFA);
+  display:flex;align-items:center;justify-content:center;font-size:20px;}
+.brand-text b{display:block;font-size:15px;font-weight:800;}
+.brand-text span{display:block;font-size:12px;color:var(--text-2);}
+.nav{display:flex;flex-direction:column;gap:3px;flex:1;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;font-weight:700;
+  font-size:14.5px;color:var(--text-2);cursor:pointer;user-select:none;transition:.15s;}
+.nav-item:hover{background:var(--purple-pale);color:var(--text);}
+.nav-item.active{background:var(--purple-light);color:var(--purple-dark);}
+.nav-icon{font-size:17px;width:20px;text-align:center;}
+.sidebar-footer{font-size:11.5px;color:var(--text-3);padding:10px 12px 0;border-top:1px solid var(--border);margin-top:10px;}
+
+.main{flex:1;min-width:0;padding:26px 34px 60px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px;}
+.topbar h1{font-size:24px;margin:0;font-weight:800;}
+.topbar-sub{color:var(--text-2);font-size:14px;margin-top:3px;}
+
+.btn{border:none;border-radius:12px;padding:10px 18px;font-family:inherit;font-weight:700;font-size:14px;
+  cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px;}
+.btn-primary{background:var(--purple);color:#fff;}
+.btn-primary:hover{background:var(--purple-dark);}
+.btn-ghost{background:var(--purple-pale);color:var(--purple-dark);}
+.btn-ghost:hover{background:var(--purple-light);}
+.btn-sm{padding:6px 12px;font-size:12.5px;border-radius:9px;}
+.btn-icon{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-3);padding:5px;border-radius:8px;}
+.btn-icon:hover{background:var(--purple-pale);color:var(--purple-dark);}
+
+/* Pages */
+.page{display:none;}
+.page.active{display:block;}
+
+/* Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border);}
+.kpi-label{font-size:12.5px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.kpi-value{font-size:26px;font-weight:800;line-height:1.1;}
+.kpi-delta{margin-top:8px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:8px;}
+.kpi-delta.up{color:var(--green);background:var(--green-bg);}
+.kpi-delta.down{color:var(--red);background:var(--red-bg);}
+.kpi-delta.flat{color:var(--text-2);background:var(--purple-pale);}
+.spend-breakdown{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
+.spend-breakdown-item{font-size:12px;font-weight:700;color:var(--text-2);}
+.spend-breakdown-item b{color:var(--text);font-weight:800;}
+
+.section-card{background:var(--card);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:20px;}
+.section-card h3{margin:0 0 16px;font-size:16px;font-weight:800;}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.card-head h3{margin:0;}
+
+.tabs{display:flex;gap:6px;background:var(--purple-pale);padding:4px;border-radius:12px;width:fit-content;margin-bottom:18px;}
+.tab{padding:8px 16px;border-radius:9px;font-weight:700;font-size:13.5px;color:var(--text-2);cursor:pointer;}
+.tab.active{background:#fff;color:var(--purple-dark);box-shadow:0 2px 6px rgba(132,49,245,.12);}
+
+.chart-wrap{position:relative;height:280px;margin-bottom:6px;}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{text-align:left;color:var(--text-2);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px;
+  padding:10px 12px;border-bottom:2px solid var(--border);}
+td{padding:11px 12px;border-bottom:1px solid var(--border);font-weight:600;}
+tr:last-child td{border-bottom:none;}
+.table-wrap{overflow-x:auto;}
+.period-block{margin-bottom:24px;}
+.period-block:last-child{margin-bottom:0;}
+.period-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  padding-bottom:12px;margin-bottom:2px;border-bottom:2px solid var(--purple-light);}
+.period-header .period-dates{font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;}
+.period-header .period-totals{display:flex;gap:8px;flex-wrap:wrap;}
+.period-chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;background:var(--purple-pale);color:var(--purple-dark);}
+.campaign-card-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px;}
+.campaign-card-table th{text-align:left;color:var(--text-3);font-weight:700;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.3px;padding:10px 10px 8px;}
+.campaign-card-table td{padding:10px;border-top:1px solid var(--purple-pale);font-weight:600;}
+.campaign-card-table tr:first-child td{border-top:none;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-3);}
+.empty-state .e-icon{font-size:32px;margin-bottom:8px;}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:var(--purple-light);color:var(--purple-dark);}
+.pill-source{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--purple-pale);}
+
+.insight-list{display:flex;flex-direction:column;gap:10px;}
+.insight-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:var(--purple-pale);font-size:13.5px;font-weight:600;}
+.insight-item .ico{font-size:16px;}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(31,27,46,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.overlay.active{display:flex;}
+.modal{background:#fff;border-radius:var(--radius);padding:26px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;}
+.modal h3{margin:0 0 18px;font-size:17px;font-weight:800;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--text-2);margin-bottom:6px;}
+.field input,.field select{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);
+  font-family:inherit;font-size:14px;background:var(--bg);}
+.field input:focus,.field select:focus{outline:none;border-color:var(--purple);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;
+  padding:12px 22px;border-radius:12px;font-weight:700;font-size:13.5px;z-index:200;opacity:0;transition:.25s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+.setup-banner{background:var(--purple-light);border:1.5px dashed var(--purple);border-radius:var(--radius);
+  padding:18px 22px;margin-bottom:22px;font-size:14px;font-weight:600;color:var(--purple-dark);}
+
+@media(max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:.2s;z-index:150;box-shadow:0 0 30px rgba(0,0,0,.15);}
+  .sidebar.open{transform:translateX(0);}
+  .main{padding:18px;}
+  .menu-toggle{display:inline-flex !important;}
+}
+.menu-toggle{display:none;background:var(--purple-pale);border:none;border-radius:10px;width:38px;height:38px;
+  align-items:center;justify-content:center;font-size:18px;cursor:pointer;margin-right:10px;}
+
+/* Login gate */
+#loginGate{position:fixed;inset:0;background:linear-gradient(135deg,#FAF7FE,#F3EBFE);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-card{background:#fff;border-radius:var(--radius);padding:40px 36px;width:100%;max-width:380px;
+  box-shadow:var(--shadow);text-align:center;}
+.login-card .brand-badge{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--purple),#B37CFA);
+  display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px;}
+.login-card h2{margin:0 0 6px;font-size:19px;font-weight:800;}
+.login-card p{margin:0 0 22px;color:var(--text-2);font-size:13.5px;}
+.login-card input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);
+  font-family:inherit;font-size:15px;background:var(--bg);margin-bottom:12px;text-align:center;}
+.login-card input:focus{outline:none;border-color:var(--purple);}
+.login-card .btn{width:100%;justify-content:center;padding:12px;font-size:15px;}
+.login-error{color:var(--red);font-size:13px;font-weight:700;margin:-4px 0 12px;display:none;}
+</style>
+</head>
+<body>
+
+<div id="loginGate">
+  <div class="login-card">
+    <div class="brand-badge">📈</div>
+    <h2>Smile Park · Маркетинг</h2>
+    <p>Введи пароль, щоб відкрити дашборд</p>
+    <input type="password" id="loginPassword" placeholder="Пароль" autofocus>
+    <div class="login-error" id="loginError">Неправильний пароль</div>
+    <button class="btn btn-primary" id="loginBtn" style="display:inline-flex;">Увійти</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-badge">📈</div>
+      <div class="brand-text"><b>Smile Park</b><span>Маркетинг</span></div>
+    </div>
+    <div class="nav">
+      <div class="nav-item active" data-page="overview"><span class="nav-icon">📊</span>Головна</div>
+      <div class="nav-item" data-page="social"><span class="nav-icon">📱</span>Соціальні мережі</div>
+      <div class="nav-item" data-page="ads"><span class="nav-icon">📢</span>Реклама</div>
+      <div class="nav-item" data-page="appstats"><span class="nav-icon">📲</span>Застосунок</div>
+      <div class="nav-item" data-page="push"><span class="nav-icon">🔔</span>Push-повідомлення</div>
+      <div class="nav-item" data-page="leads"><span class="nav-icon">📝</span>Заявки</div>
+      <div class="nav-item" data-page="business"><span class="nav-icon">📈</span>Бізнес-показники</div>
+    </div>
+    <div class="sidebar-footer">Дані оновлюються вручну.<br>Наступний крок — API-інтеграції.</div>
+  </div>
+
+  <div class="main">
+    <button class="menu-toggle" id="menuToggle">☰</button>
+
+    <div id="setupBanner" class="setup-banner" style="display:none;">
+      ⚠️ Підключення до бази ще не налаштоване. Відкрий файл, знайди рядки <code>SUPABASE_URL</code> і
+      <code>SUPABASE_ANON_KEY</code> на початку тегу &lt;script&gt; та встав свої дані з нового Supabase-проєкту.
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="topbar">
+        <div><h1>Головна</h1><div class="topbar-sub" id="overviewSubtitle">Загальний стан маркетингу Smile Park</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="overviewFrom" onchange="loadPageFor('overview')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="overviewTo" onchange="loadPageFor('overview')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div class="kpi-grid" id="overviewKpis"></div>
+      <div class="section-card">
+        <h3>💼 Бізнес-показники (середнє по комплексах)</h3>
+        <div class="kpi-grid" id="overviewBizKpis"></div>
+      </div>
+      <div class="section-card">
+        <div class="card-head">
+          <h3 id="trendChartTitle">Динаміка по тижнях</h3>
+          <select id="trendMetricSelect" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;">
+            <option value="reach">Загальне охоплення</option>
+            <option value="spend">Витрати на рекламу</option>
+            <option value="ig_followers">Підписники Instagram</option>
+            <option value="tt_followers">Підписники TikTok</option>
+            <option value="downloads">Завантаження застосунку</option>
+            <option value="leads">Заявки</option>
+          </select>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="section-card">
+        <h3>💡 Ключові інсайти</h3>
+        <div class="insight-list" id="insightsList"></div>
+      </div>
+    </div>
+
+    <!-- SOCIAL -->
+    <div class="page" id="page-social">
+      <div class="topbar">
+        <div><h1>Соціальні мережі</h1><div class="topbar-sub">Instagram і TikTok — охоплення, залучення, приріст</div></div>
+        <button class="btn btn-primary" onclick="openSocialForm()">+ Додати запис</button>
+      </div>
+      <div class="card-head" style="margin-bottom:0;">
+        <div class="tabs" style="margin-bottom:0;">
+          <div class="tab active" data-tab="instagram" onclick="switchSocialTab('instagram')">Instagram</div>
+          <div class="tab" data-tab="tiktok" onclick="switchSocialTab('tiktok')">TikTok</div>
+          <div class="tab" data-tab="facebook" onclick="switchSocialTab('facebook')">Facebook</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="socialFrom" onchange="loadPageFor('social')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="socialTo" onchange="loadPageFor('social')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div style="height:18px;"></div>
+      <div class="kpi-grid" id="socialKpis"></div>
+      <div class="section-card">
+        <h3>Динаміка залучення</h3>
+        <div class="chart-wrap"><canvas id="socialChart"></canvas></div>
+      </div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія записів</h3></div>
+        <div class="table-wrap" id="socialTable"></div>
+      </div>
+    </div>
+
+    <!-- ADS -->
+    <div class="page" id="page-ads">
+      <div class="topbar">
+        <div><h1>Реклама</h1><div class="topbar-sub">Meta Ads · Google Ads · TikTok Ads</div></div>
+        <button class="btn btn-primary" onclick="openAdsForm()">+ Додати запис</button>
+      </div>
+      <div class="card-head" style="margin-bottom:0;">
+        <div class="tabs" style="margin-bottom:0;">
+          <div class="tab active" data-tab="meta" onclick="switchAdsTab('meta')">Meta Ads</div>
+          <div class="tab" data-tab="google" onclick="switchAdsTab('google')">Google Ads</div>
+          <div class="tab" data-tab="tiktok" onclick="switchAdsTab('tiktok')">TikTok Ads</div>
+        </div>
+        <select id="adsParkFilter" onchange="switchAdsPark(this.value)" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;background:#fff;">
+          <option value="all">Усі комплекси</option>
+        </select>
+      </div>
+      <div style="height:10px;"></div>
+      <div class="card-head" style="margin-bottom:0;">
+        <div></div>
+        <select id="adsCampaignFilter" onchange="switchAdsCampaign(this.value)" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;background:#fff;">
+          <option value="all">Усі кампанії</option>
+        </select>
+      </div>
+      <div style="height:10px;"></div>
+      <div class="card-head" style="margin-bottom:0;">
+        <div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="adsFrom" onchange="loadPageFor('ads')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="adsTo" onchange="loadPageFor('ads')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div style="height:18px;"></div>
+      <div class="kpi-grid" id="adsKpis"></div>
+      <div class="section-card">
+        <h3>Витрати та результати</h3>
+        <div class="chart-wrap"><canvas id="adsChart"></canvas></div>
+      </div>
+      <div class="section-card" id="adsCampaignChartCard" style="display:none;">
+        <h3 id="adsCampaignChartTitle">Порівняння кампаній</h3>
+        <div class="chart-wrap" style="height:260px;"><canvas id="adsCampaignChart"></canvas></div>
+      </div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія записів</h3></div>
+        <div id="adsTable"></div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div class="page" id="page-appstats">
+      <div class="topbar">
+        <div><h1>Мобільний застосунок</h1><div class="topbar-sub">Завантаження та користувачі</div></div>
+        <button class="btn btn-primary" onclick="openAppForm()">+ Додати запис</button>
+      </div>
+      <div class="card-head">
+        <select id="appParkFilter" onchange="switchAppPark(this.value)" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;background:#fff;">
+          <option value="all">Усі комплекси</option>
+        </select>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="appstatsFrom" onchange="loadPageFor('appstats')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="appstatsTo" onchange="loadPageFor('appstats')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div class="kpi-grid" id="appKpis"></div>
+      <div class="section-card">
+        <h3>Динаміка завантажень</h3>
+        <div class="chart-wrap"><canvas id="appChart"></canvas></div>
+      </div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія записів</h3></div>
+        <div class="table-wrap" id="appTable"></div>
+      </div>
+    </div>
+
+    <!-- PUSH -->
+    <div class="page" id="page-push">
+      <div class="topbar">
+        <div><h1>Push-повідомлення</h1><div class="topbar-sub">Історія кампаній (ручне введення до інтеграції з OneSignal)</div></div>
+        <button class="btn btn-primary" onclick="openPushForm()">+ Додати кампанію</button>
+      </div>
+      <div class="card-head">
+        <div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="pushFrom" onchange="loadPageFor('push')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="pushTo" onchange="loadPageFor('push')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div class="kpi-grid" id="pushKpis"></div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія кампаній</h3></div>
+        <div class="table-wrap" id="pushTable"></div>
+      </div>
+    </div>
+
+    <!-- LEADS -->
+    <div class="page" id="page-leads">
+      <div class="topbar">
+        <div><h1>Заявки</h1><div class="topbar-sub">Розподіл заявок по джерелах та комплексах</div></div>
+        <button class="btn btn-primary" onclick="openLeadsForm()">+ Додати запис</button>
+      </div>
+      <div class="card-head">
+        <select id="leadsParkFilter" onchange="switchLeadsPark(this.value)" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;background:#fff;">
+          <option value="all">Усі комплекси</option>
+        </select>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="leadsFrom" onchange="loadPageFor('leads')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="leadsTo" onchange="loadPageFor('leads')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div class="kpi-grid" id="leadsKpis"></div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;" id="leadsGrid">
+        <div class="section-card">
+          <h3>Динаміка заявок</h3>
+          <div class="chart-wrap"><canvas id="leadsChart"></canvas></div>
+        </div>
+        <div class="section-card">
+          <h3>Розподіл по джерелах</h3>
+          <div class="chart-wrap"><canvas id="leadsPie"></canvas></div>
+        </div>
+      </div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія записів</h3></div>
+        <div class="table-wrap" id="leadsTable"></div>
+      </div>
+    </div>
+
+    <!-- BUSINESS METRICS -->
+    <div class="page" id="page-business">
+      <div class="topbar">
+        <div><h1>Бізнес-показники</h1><div class="topbar-sub">LTV, ROI, ROAS, CSI, база клієнтів, конверсія — по комплексах</div></div>
+        <button class="btn btn-primary" onclick="openBusinessForm()">+ Додати запис</button>
+      </div>
+      <div class="card-head">
+        <div class="tabs" id="businessTabs" style="margin-bottom:0;">
+          <div class="tab active" data-park="troieshchyna" onclick="switchBusinessPark('troieshchyna')">Київ, Троєщина</div>
+          <div class="tab" data-park="darynok" onclick="switchBusinessPark('darynok')">Київ, Даринок</div>
+          <div class="tab" data-park="kharkiv" onclick="switchBusinessPark('kharkiv')">Харків</div>
+          <div class="tab" data-park="lviv" onclick="switchBusinessPark('lviv')">Львів</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="businessFrom" onchange="loadPageFor('business')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+          <span style="color:var(--text-3);font-weight:700;">—</span>
+          <input type="date" id="businessTo" onchange="loadPageFor('business')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+        </div>
+      </div>
+      <div class="kpi-grid" id="businessKpis"></div>
+      <div class="section-card">
+        <div class="card-head">
+          <h3>Динаміка показника</h3>
+          <select id="businessMetricSelect" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);font-weight:700;font-family:inherit;">
+            <option value="visits">Відвідуваність</option>
+            <option value="ltv">LTV</option>
+            <option value="roi">ROI</option>
+            <option value="roas">ROAS</option>
+            <option value="avg_check_regular">Середній чек у комплексі</option>
+            <option value="avg_check_party">Середній чек свята</option>
+            <option value="csi">CSI</option>
+            <option value="csi_birthday">CSI днів народження</option>
+            <option value="new_clients">Нові клієнти в базі</option>
+            <option value="database_size">Розмір бази</option>
+            <option value="website_visits">Відвідування сайту</option>
+            <option value="lead_to_sale_conversion">Конверсія ліда в продаж</option>
+            <option value="cac">CAC</option>
+            <option value="authorized_checkout_pct">% авторизованих на касі</option>
+          </select>
+        </div>
+        <div class="chart-wrap"><canvas id="businessChart"></canvas></div>
+      </div>
+      <div class="section-card">
+        <div class="card-head"><h3>Історія записів</h3></div>
+        <div class="table-wrap" id="businessTable"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modalBody"></div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const SUPABASE_URL = 'https://gqvksbrfubfupucyxdwv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TrJSzbBh50cE6CZG0C7PGA_3NCQtfMV';
+let sb = null;
+let DB_READY = false;
+try{
+  if(SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 10){
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    DB_READY = true;
+  }
+}catch(e){ console.error(e); }
+if(!DB_READY) document.getElementById('setupBanner').style.display = 'block';
+
+const SOURCE_LABELS = {website:'Сайт', app:'Застосунок', instagram:'Instagram', tiktok:'TikTok', phone:'Телефон', other:'Інше'};
+const PLATFORM_LABELS = {instagram:'Instagram', tiktok:'TikTok', facebook:'Facebook', meta:'Meta Ads', google:'Google Ads'};
+const PARK_LABELS = {troieshchyna:'Київ, Троєщина', darynok:'Київ, Даринок', kharkiv:'Харків', lviv:'Львів'};
+const PARK_KEYS = Object.keys(PARK_LABELS);
+function fillParkOptions(selectEl, {includeAll=true, includeBrand=false}={}){
+  let html = includeAll ? '<option value="all">Усі комплекси</option>' : '';
+  if(includeBrand) html += '<option value="">Без прив\u2019язки (бренд загалом)</option>';
+  html += PARK_KEYS.map(k=>`<option value="${k}">${PARK_LABELS[k]}</option>`).join('');
+  selectEl.innerHTML = html;
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  fillParkOptions(document.getElementById('adsParkFilter'));
+  fillParkOptions(document.getElementById('appParkFilter'));
+  fillParkOptions(document.getElementById('leadsParkFilter'));
+});
+function aggregateByPeriod(rows, sumFields){
+  const map = {};
+  rows.forEach(r=>{
+    const key = r.period_start+'|'+r.period_end;
+    if(!map[key]) map[key] = {period_start:r.period_start, period_end:r.period_end};
+    sumFields.forEach(f=>{ map[key][f] = (map[key][f]||0) + (Number(r[f])||0); });
+  });
+  return Object.values(map).sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+}
+
+/* ============ HELPERS ============ */
+function fmtNum(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return new Intl.NumberFormat('uk-UA').format(Math.round(n*10)/10); }
+function fmtPct(n){ if(n===null||n===undefined||!isFinite(n)) return '—'; return (n>0?'+':'') + n.toFixed(1) + '%'; }
+function fmtMoney(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n) + ' ₴'; }
+function fmtDate(d){ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600); }
+function deltaHtml(curr, prev){
+  if(prev===null||prev===undefined||prev===0||curr===null||curr===undefined) return `<span class="kpi-delta flat">— порівняно з поперед. періодом</span>`;
+  const pct = ((curr-prev)/Math.abs(prev))*100;
+  const cls = pct>0.05?'up':(pct<-0.05?'down':'flat');
+  const arrow = pct>0.05?'↑':(pct<-0.05?'↓':'→');
+  return `<span class="kpi-delta ${cls}">${arrow} ${fmtPct(pct)} до попер. періоду</span>`;
+}
+function myName(){
+  let n = localStorage.getItem('sp_marketing_user');
+  if(!n){ n = prompt('Як тебе підписувати у записах? (можна залишити порожнім)') || ''; localStorage.setItem('sp_marketing_user', n); }
+  return n;
+}
+async function dbSelect(table, filters={}, orderCol=null){
+  if(!DB_READY) return [];
+  let q = sb.from(table).select('*');
+  for(const k in filters) q = q.eq(k, filters[k]);
+  const col = orderCol || (table==='push_campaigns' ? 'date' : 'period_start');
+  q = q.order(col, {ascending:true, nullsFirst:true});
+  const {data, error} = await q;
+  if(error){ console.error(error); toast('Помилка завантаження даних'); return []; }
+  return data || [];
+}
+async function dbInsert(table, row){
+  if(!DB_READY){ toast('Спочатку підключи Supabase (див. банер вгорі)'); return false; }
+  const {error} = await sb.from(table).insert(row);
+  if(error){ console.error(error); toast('Помилка збереження'); return false; }
+  toast('Збережено ✓'); return true;
+}
+async function dbUpdate(table, id, row){
+  const {error} = await sb.from(table).update(row).eq('id', id);
+  if(error){ console.error(error); toast('Помилка оновлення'); return false; }
+  toast('Оновлено ✓'); return true;
+}
+async function dbDelete(table, id){
+  if(!confirm('Видалити цей запис?')) return false;
+  const {error} = await sb.from(table).delete().eq('id', id);
+  if(error){ console.error(error); toast('Помилка видалення'); return false; }
+  toast('Видалено'); return true;
+}
+function destroyChart(ref){ if(window[ref]){ window[ref].destroy(); window[ref]=null; } }
+
+/* ============ NAV ============ */
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', ()=>navigateTo(el.dataset.page));
+});
+document.getElementById('menuToggle').addEventListener('click', ()=>document.getElementById('sidebar').classList.toggle('open'));
+
+function navigateTo(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.page===page));
+  document.getElementById('sidebar').classList.remove('open');
+  loadPage(page);
+}
+function loadPage(page){
+  if(page==='overview') loadOverview();
+  if(page==='social') loadSocial();
+  if(page==='ads') loadAds();
+  if(page==='appstats') loadApp();
+  if(page==='push') loadPush();
+  if(page==='leads') loadLeads();
+  if(page==='business') loadBusiness();
+}
+
+/* ============ MODAL ============ */
+function closeModal(){ document.getElementById('overlay').classList.remove('active'); }
+function renderModal(title, fieldsHtml, onSave){
+  document.getElementById('modalBody').innerHTML = `
+    <h3>${title}</h3>
+    <form id="modalForm">${fieldsHtml}</form>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Скасувати</button>
+      <button class="btn btn-primary" type="button" id="modalSaveBtn">Зберегти</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('modalSaveBtn').onclick = onSave;
+}
+function fVal(id){ const el = document.getElementById(id); if(!el) return null; const v = el.value; if(el.type==='number') return v===''?null:parseFloat(v); return v||null; }
+function fillModalFields(values){
+  Object.entries(values).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(el && val!==null && val!==undefined) el.value = val;
+  });
+}
+
+/* ============================================================
+   OVERVIEW
+   ============================================================ */
+function spendCardHtml(total, metaV, googleV, tiktokV, deltaHtmlStr){
+  return `<div class="kpi-card"><div class="kpi-label">💸 Витрати на рекламу</div><div class="kpi-value">${fmtMoney(total)}</div>
+    <div class="spend-breakdown">
+      <div class="spend-breakdown-item">Meta: <b>${fmtMoney(metaV)}</b></div>
+      <div class="spend-breakdown-item">Google: <b>${fmtMoney(googleV)}</b></div>
+      <div class="spend-breakdown-item">TikTok: <b>${fmtMoney(tiktokV)}</b></div>
+    </div>
+    ${deltaHtmlStr||''}</div>`;
+}
+function renderKpiCards(containerId, cards){
+  document.getElementById(containerId).innerHTML = cards.map(c=>{
+    if(typeof c === 'string') return c;
+    const [l,v,d] = c;
+    return `<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d||''}</div>`;
+  }).join('');
+}
+function renderInsights(candidates){
+  const insightsEl = document.getElementById('insightsList');
+  const ranked = candidates
+    .filter(([,c,p])=>c!==null&&c!==undefined&&p!==null&&p!==undefined&&p!==0)
+    .map(([label,c,p])=>[label, ((c-p)/Math.abs(p))*100])
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+  if(ranked.length===0){
+    insightsEl.innerHTML = `<div class="empty-state"><div class="e-icon">💡</div>Ще недостатньо даних для порівняння — додай записи хоча б за два періоди.</div>`;
+  } else {
+    insightsEl.innerHTML = ranked.slice(0,4).map(([label,pct])=>{
+      const up = pct>0;
+      return `<div class="insight-item"><span class="ico">${up?'📈':'📉'}</span>${label} ${up?'зросло':'знизилось'} на ${Math.abs(pct).toFixed(1)}% порівняно з попереднім періодом.</div>`;
+    }).join('');
+  }
+}
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function rangeInputsHtml(idPrefix){
+  return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <input type="date" id="${idPrefix}From" onchange="loadPageFor('${idPrefix}')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+    <span style="color:var(--text-3);font-weight:700;">—</span>
+    <input type="date" id="${idPrefix}To" onchange="loadPageFor('${idPrefix}')" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:inherit;font-weight:700;background:#fff;">
+  </div>`;
+}
+const RANGE_PAGE_LOADERS = {
+  overview: ()=>loadOverview(), social: ()=>loadSocial(), ads: ()=>loadAds(), appstats: ()=>loadApp(),
+  leads: ()=>loadLeads(), business: ()=>loadBusiness(), push: ()=>loadPush(),
+};
+function loadPageFor(idPrefix){ const fn = RANGE_PAGE_LOADERS[idPrefix]; if(fn) fn(); }
+function ensureRangeDefaults(idPrefix, rows, dateField){
+  dateField = dateField || 'period_start';
+  const fromEl = document.getElementById(idPrefix+'From'), toEl = document.getElementById(idPrefix+'To');
+  if(fromEl.value && toEl.value) return [fromEl.value, toEl.value];
+  const dates = [...new Set(rows.map(r=>r[dateField]))].filter(Boolean).sort((a,b)=>new Date(b)-new Date(a));
+  let from, to;
+  if(dates.length){
+    to = dateField==='period_start' ? (rows.find(r=>r[dateField]===dates[0]).period_end || dates[0]) : dates[0];
+    from = dates[0];
+  } else {
+    const today = new Date(); const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate()-6);
+    from = isoDate(weekAgo); to = isoDate(today);
+  }
+  fromEl.value = from; toEl.value = to;
+  return [from, to];
+}
+function rowsInRange(rows, from, to, dateField){
+  dateField = dateField || 'period_start';
+  return rows.filter(r => r[dateField] && r[dateField]>=from && r[dateField]<=to);
+}
+function sumInRange(rows, field, from, to, dateField){
+  return rowsInRange(rows, from, to, dateField).reduce((s,r)=>s+(Number(r[field])||0),0);
+}
+function avgInRange(rows, field, from, to, dateField){
+  return avgField(rowsInRange(rows, from, to, dateField), field);
+}
+function latestInRange(rows, from, to, dateField){
+  dateField = dateField || 'period_start';
+  const inRange = rowsInRange(rows, from, to, dateField).sort((a,b)=>new Date(a[dateField])-new Date(b[dateField]));
+  return inRange.length ? inRange[inRange.length-1] : null;
+}
+function prevRangeOf(from, to){
+  const fromD = new Date(from), toD = new Date(to);
+  const days = Math.round((toD-fromD)/86400000)+1;
+  const prevTo = new Date(fromD); prevTo.setDate(prevTo.getDate()-1);
+  const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate()-(days-1));
+  return [isoDate(prevFrom), isoDate(prevTo)];
+}
+function fmtRangeLabel(from, to){ return from===to ? fmtDate(from) : `${fmtDate(from)} — ${fmtDate(to)}`; }
+function avgField(rows, field){
+  const vals = rows.filter(r=>r[field]!==null && r[field]!==undefined && r[field]!=='').map(r=>Number(r[field]));
+  if(vals.length===0) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+
+async function loadOverview(){
+  const [social, ads, app, leads, push, biz] = await Promise.all([
+    dbSelect('social_stats'), dbSelect('ads_stats'), dbSelect('app_stats'), dbSelect('leads_stats'), dbSelect('push_campaigns'), dbSelect('business_metrics')
+  ]);
+  const allRows = [...social, ...ads, ...leads, ...biz];
+  const [from, to] = ensureRangeDefaults('overview', allRows);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+
+  document.getElementById('overviewSubtitle').textContent = `Стан маркетингу за ${fmtRangeLabel(from,to)}`;
+
+  function socialLatest(platform, f, t){ return latestInRange(social.filter(r=>r.platform===platform), f, t); }
+  const igNow = socialLatest('instagram', from, to), igPrev = socialLatest('instagram', prevFrom, prevTo);
+  const ttNow = socialLatest('tiktok', from, to), ttPrev = socialLatest('tiktok', prevFrom, prevTo);
+
+  const reachNow = (igNow?.reach||0)+(ttNow?.reach||0)+sumInRange(ads,'reach',from,to);
+  const reachPrev = (igPrev?.reach||0)+(ttPrev?.reach||0)+sumInRange(ads,'reach',prevFrom,prevTo);
+  const spendNow = sumInRange(ads,'spend',from,to), spendPrev = sumInRange(ads,'spend',prevFrom,prevTo);
+  const impNow = sumInRange(ads,'impressions',from,to), clicksNow = sumInRange(ads,'clicks',from,to);
+  const impPrev = sumInRange(ads,'impressions',prevFrom,prevTo), clicksPrev = sumInRange(ads,'clicks',prevFrom,prevTo);
+  const ctrNow = impNow ? clicksNow/impNow*100 : null, ctrPrev = impPrev ? clicksPrev/impPrev*100 : null;
+  const downloadsNow = sumInRange(app,'downloads',from,to), downloadsPrev = sumInRange(app,'downloads',prevFrom,prevTo);
+
+  const erIgNow = igNow && igNow.followers ? igNow.engagements/igNow.followers*100 : null;
+  const erTtNow = ttNow && ttNow.followers ? ttNow.engagements/ttNow.followers*100 : null;
+  const erVals = [erIgNow, erTtNow].filter(x=>x!==null);
+  const erNow = erVals.length ? erVals.reduce((a,b)=>a+b,0)/erVals.length : null;
+  const erIgPrev = igPrev && igPrev.followers ? igPrev.engagements/igPrev.followers*100 : null;
+  const erTtPrev = ttPrev && ttPrev.followers ? ttPrev.engagements/ttPrev.followers*100 : null;
+  const erPrevVals = [erIgPrev, erTtPrev].filter(x=>x!==null);
+  const erPrev = erPrevVals.length ? erPrevVals.reduce((a,b)=>a+b,0)/erPrevVals.length : null;
+
+  const metaSpendNow = sumInRange(ads.filter(r=>r.platform==='meta'),'spend',from,to);
+  const googleSpendNow = sumInRange(ads.filter(r=>r.platform==='google'),'spend',from,to);
+  const tiktokSpendNow = sumInRange(ads.filter(r=>r.platform==='tiktok'),'spend',from,to);
+
+  renderKpiCards('overviewKpis', [
+    spendCardHtml(spendNow, metaSpendNow, googleSpendNow, tiktokSpendNow, deltaHtml(spendNow, spendPrev)),
+    ['📸 Підписники Instagram', fmtNum(igNow?.followers), deltaHtml(igNow?.followers, igPrev?.followers)],
+    ['🎵 Підписники TikTok', fmtNum(ttNow?.followers), deltaHtml(ttNow?.followers, ttPrev?.followers)],
+    ['📲 Завантаження застосунку', fmtNum(downloadsNow), deltaHtml(downloadsNow, downloadsPrev)],
+    ['🎯 CTR реклами', ctrNow!==null?ctrNow.toFixed(2)+'%':'—', deltaHtml(ctrNow, ctrPrev)],
+    ['❤️ Engagement Rate', erNow!==null?erNow.toFixed(2)+'%':'—', deltaHtml(erNow, erPrev)],
+  ]);
+
+  const bizInRange = rowsInRange(biz, from, to), bizPrevRange = rowsInRange(biz, prevFrom, prevTo);
+  const ltvNow = avgField(bizInRange,'ltv'), ltvPrev = avgField(bizPrevRange,'ltv');
+  const roiNow = avgField(bizInRange,'roi'), roiPrev = avgField(bizPrevRange,'roi');
+  const convNow = avgField(bizInRange,'lead_to_sale_conversion'), convPrev = avgField(bizPrevRange,'lead_to_sale_conversion');
+  renderKpiCards('overviewBizKpis', [
+    ['LTV', ltvNow!==null?fmtMoney(ltvNow):'—', deltaHtml(ltvNow, ltvPrev)],
+    ['ROI', roiNow!==null?roiNow.toFixed(1)+'%':'—', deltaHtml(roiNow, roiPrev)],
+    ['Конверсія ліда в продаж', convNow!==null?convNow.toFixed(1)+'%':'—', deltaHtml(convNow, convPrev)],
+  ]);
+
+  renderInsights([
+    ['Витрати на рекламу', spendNow, spendPrev],
+    ['Підписники Instagram', igNow?.followers, igPrev?.followers], ['Підписники TikTok', ttNow?.followers, ttPrev?.followers],
+    ['CTR реклами', ctrNow, ctrPrev], ['Engagement Rate', erNow, erPrev],
+    ['LTV', ltvNow, ltvPrev], ['ROI', roiNow, roiPrev], ['Конверсія ліда в продаж', convNow, convPrev],
+  ]);
+
+  loadTrendChart(social, ads, app, leads, from, to);
+  document.getElementById('trendMetricSelect').onchange = ()=>loadTrendChart(social, ads, app, leads, from, to);
+}
+
+function monthKey(d){ const dt=new Date(d); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); }
+function monthLabel(key){ const [y,m]=key.split('-'); return new Date(y,m-1,1).toLocaleDateString('uk-UA',{month:'long',year:'numeric'}); }
+
+function loadTrendChart(social, ads, app, leads, from, to){
+  const metric = document.getElementById('trendMetricSelect').value;
+  const allRows = [...social, ...ads, ...app, ...leads];
+  const weeksInRange = [...new Set(rowsInRange(allRows, from, to).map(r=>r.period_start))].filter(Boolean).sort((a,b)=>new Date(a)-new Date(b));
+
+  document.getElementById('trendChartTitle').textContent = 'Динаміка по тижнях за ' + fmtRangeLabel(from, to);
+
+  function sumAtWeek(rows, ws, field){ return rows.filter(r=>r.period_start===ws).reduce((s,r)=>s+(Number(r[field])||0),0); }
+
+  let values = [];
+  if(weeksInRange.length){
+    if(metric==='reach'){
+      values = weeksInRange.map(ws => sumAtWeek(social, ws, 'reach') + sumAtWeek(ads, ws, 'reach'));
+    } else if(metric==='spend'){
+      values = weeksInRange.map(ws => sumAtWeek(ads, ws, 'spend'));
+    } else if(metric==='ig_followers' || metric==='tt_followers'){
+      const platform = metric==='ig_followers' ? 'instagram' : 'tiktok';
+      values = weeksInRange.map(ws => { const r = social.find(x=>x.platform===platform && x.period_start===ws); return r ? r.followers : null; });
+    } else if(metric==='downloads'){
+      values = weeksInRange.map(ws => sumAtWeek(app, ws, 'downloads'));
+    } else if(metric==='leads'){
+      values = weeksInRange.map(ws => sumAtWeek(leads, ws, 'count'));
+    }
+  }
+  const labels = weeksInRange.map(ws=>fmtDate(ws));
+  destroyChart('trendChartInst');
+  const ctx = document.getElementById('trendChart');
+  if(weeksInRange.length===0){
+    ctx.parentElement.innerHTML = `<div class="empty-state"><div class="e-icon">📈</div>Ще немає даних за обраний період.</div><canvas id="trendChart"></canvas>`;
+    return;
+  }
+  window.trendChartInst = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[{data:values, borderColor:'#8431F5', backgroundColor:'rgba(132,49,245,.08)', fill:true, tension:.35, pointRadius:3, pointBackgroundColor:'#8431F5'}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#F0EBFA'}}, x:{grid:{display:false}}}}
+  });
+}
+
+/* ============================================================
+   SOCIAL
+   ============================================================ */
+let currentSocialTab = 'instagram';
+function switchSocialTab(tab){
+  currentSocialTab = tab;
+  document.querySelectorAll('#page-social .tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('socialFrom').value = ''; document.getElementById('socialTo').value = '';
+  loadSocial();
+}
+let socialCache = [];
+async function loadSocial(){
+  const rows = await dbSelect('social_stats', {platform: currentSocialTab});
+  socialCache = rows;
+  const sorted = [...rows].sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+  const [from, to] = ensureRangeDefaults('social', rows);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+  const latest = latestInRange(rows, from, to);
+  const prev = latestInRange(rows, prevFrom, prevTo);
+  const reachSum = sumInRange(rows, 'reach', from, to), reachPrevSum = sumInRange(rows, 'reach', prevFrom, prevTo);
+  const impSum = sumInRange(rows, 'impressions', from, to), impPrevSum = sumInRange(rows, 'impressions', prevFrom, prevTo);
+  const engSum = sumInRange(rows, 'engagements', from, to), engPrevSum = sumInRange(rows, 'engagements', prevFrom, prevTo);
+  const er = latest && latest.followers ? engSum/latest.followers*100 : null;
+  const err = reachSum ? engSum/reachSum*100 : null;
+  const erPrev = prev && prev.followers ? engPrevSum/prev.followers*100 : null;
+
+  document.getElementById('socialKpis').innerHTML = [
+    ['Підписники', fmtNum(latest?.followers), deltaHtml(latest?.followers, prev?.followers)],
+    ['Охоплення', fmtNum(reachSum), deltaHtml(reachSum, reachPrevSum)],
+    ['Покази', fmtNum(impSum), deltaHtml(impSum, impPrevSum)],
+    ['Взаємодії', fmtNum(engSum), deltaHtml(engSum, engPrevSum)],
+    ['Engagement Rate', er!==null?er.toFixed(2)+'%':'—', deltaHtml(er, erPrev)],
+    ['ERR (на охоплення)', err!==null?err.toFixed(2)+'%':'—', ''],
+  ].map(([l,v,d])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d}</div>`).join('');
+
+  destroyChart('socialChartInst');
+  window.socialChartInst = new Chart(document.getElementById('socialChart'), {
+    type:'line',
+    data:{ labels: sorted.map(r=>fmtDate(r.period_start)),
+      datasets:[
+        {label:'Охоплення', data:sorted.map(r=>r.reach), borderColor:'#8431F5', backgroundColor:'rgba(132,49,245,.08)', tension:.35, fill:true},
+        {label:'Взаємодії', data:sorted.map(r=>r.engagements), borderColor:'#16A34A', backgroundColor:'rgba(22,163,74,.06)', tension:.35, fill:true},
+      ]},
+    options:{plugins:{legend:{position:'top', labels:{boxWidth:10,font:{family:'Nunito',weight:700}}}}, scales:{y:{beginAtZero:true, grid:{color:'#F0EBFA'}}, x:{grid:{display:false}}}}
+  });
+
+  const tableHtml = sorted.length===0 ? `<div class="empty-state"><div class="e-icon">📱</div>Ще немає записів для ${PLATFORM_LABELS[currentSocialTab]}. Додай перший!</div>` :
+    `<table><thead><tr><th>Період</th><th>Підписники</th><th>Приріст</th><th>Охоплення</th><th>Взаємодії</th><th>ER</th><th></th></tr></thead><tbody>
+      ${[...sorted].reverse().map(r=>{
+        const erR = r.followers ? (r.engagements/r.followers*100).toFixed(2)+'%' : '—';
+        return `<tr><td>${fmtDate(r.period_start)} — ${fmtDate(r.period_end)}</td><td>${fmtNum(r.followers)}</td><td>${r.followers_growth>=0?'+':''}${fmtNum(r.followers_growth)}</td><td>${fmtNum(r.reach)}</td><td>${fmtNum(r.engagements)}</td><td>${erR}</td>
+        <td><button class="btn-icon" onclick='editSocial(${r.id})'>✏️</button><button class="btn-icon" onclick='deleteSocial(${r.id})'>🗑</button></td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+  document.getElementById('socialTable').innerHTML = tableHtml;
+}
+async function deleteSocial(id){ if(await dbDelete('social_stats', id)) loadSocial(); }
+function editSocial(id){ const r = socialCache.find(x=>x.id===id); if(r) openSocialForm(r); }
+function openSocialForm(existing){
+  const isEdit = !!existing;
+  renderModal(isEdit ? `Редагувати запис — ${PLATFORM_LABELS[currentSocialTab]}` : `Новий запис — ${PLATFORM_LABELS[currentSocialTab]}`, `
+    <div class="field-row">
+      <div class="field"><label>Початок періоду</label><input type="date" id="f_period_start" required></div>
+      <div class="field"><label>Кінець періоду</label><input type="date" id="f_period_end" required></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Підписники</label><input type="number" id="f_followers"></div>
+      <div class="field"><label>Приріст підписників</label><input type="number" id="f_followers_growth"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Охоплення</label><input type="number" id="f_reach"></div>
+      <div class="field"><label>Покази</label><input type="number" id="f_impressions"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Перегляди Reels/відео</label><input type="number" id="f_video_views"></div>
+      <div class="field"><label>Взаємодії</label><input type="number" id="f_engagements"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Лайки</label><input type="number" id="f_likes"></div>
+      <div class="field"><label>Коментарі</label><input type="number" id="f_comments"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Поширення</label><input type="number" id="f_shares"></div>
+      <div class="field"><label>Збереження</label><input type="number" id="f_saves"></div>
+    </div>
+  `, async ()=>{
+    const row = {
+      platform: currentSocialTab,
+      period_start: fVal('f_period_start'), period_end: fVal('f_period_end'),
+      followers: fVal('f_followers'), followers_growth: fVal('f_followers_growth'),
+      reach: fVal('f_reach'), impressions: fVal('f_impressions'), video_views: fVal('f_video_views'),
+      engagements: fVal('f_engagements'), likes: fVal('f_likes'), comments: fVal('f_comments'),
+      shares: fVal('f_shares'), saves: fVal('f_saves'), source: isEdit ? existing.source : 'manual', entered_by: myName(),
+    };
+    if(!row.period_start || !row.period_end){ toast('Вкажи період'); return; }
+    if(isEdit){
+      if(await dbUpdate('social_stats', existing.id, row)){ closeModal(); loadSocial(); }
+    } else {
+      if(await dbInsert('social_stats', row)){ closeModal(); loadSocial(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({
+      f_period_start: existing.period_start, f_period_end: existing.period_end,
+      f_followers: existing.followers, f_followers_growth: existing.followers_growth,
+      f_reach: existing.reach, f_impressions: existing.impressions, f_video_views: existing.video_views,
+      f_engagements: existing.engagements, f_likes: existing.likes, f_comments: existing.comments,
+      f_shares: existing.shares, f_saves: existing.saves,
+    });
+  }
+}
+
+/* ============================================================
+   ADS
+   ============================================================ */
+let currentAdsTab = 'meta';
+let currentAdsPark = 'all';
+let currentAdsCampaign = 'all';
+function switchAdsTab(tab){
+  currentAdsTab = tab;
+  currentAdsCampaign = 'all';
+  document.querySelectorAll('#page-ads .tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('adsFrom').value = ''; document.getElementById('adsTo').value = '';
+  loadAds();
+}
+function switchAdsPark(park){ currentAdsPark = park; loadAds(); }
+function switchAdsCampaign(name){ currentAdsCampaign = name; loadAds(); }
+let adsCache = [];
+async function loadAds(){
+  const allRowsRaw = await dbSelect('ads_stats', {platform: currentAdsTab});
+  adsCache = allRowsRaw;
+
+  // populate campaign filter options (based on all campaigns for this platform, regardless of park filter)
+  const campaignNames = [...new Set(allRowsRaw.map(r=>r.campaign_name).filter(Boolean))].sort();
+  const campaignSel = document.getElementById('adsCampaignFilter');
+  campaignSel.innerHTML = '<option value="all">Усі кампанії</option>' + campaignNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  campaignSel.value = campaignNames.includes(currentAdsCampaign) ? currentAdsCampaign : 'all';
+  currentAdsCampaign = campaignSel.value;
+
+  const allRows = currentAdsCampaign==='all' ? allRowsRaw : allRowsRaw.filter(r=>r.campaign_name===currentAdsCampaign);
+  const rowsForTable = currentAdsPark==='all' ? allRows : allRows.filter(r=>r.park===currentAdsPark);
+  const sorted = currentAdsPark==='all'
+    ? aggregateByPeriod(allRows, ['spend','impressions','reach','clicks','conversions','revenue'])
+    : [...rowsForTable].sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+  const [from, to] = ensureRangeDefaults('ads', sorted);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+  function aggInRange(f, t){
+    const rowsR = rowsInRange(sorted, f, t);
+    return {
+      spend: rowsR.reduce((s,r)=>s+(Number(r.spend)||0),0),
+      impressions: rowsR.reduce((s,r)=>s+(Number(r.impressions)||0),0),
+      clicks: rowsR.reduce((s,r)=>s+(Number(r.clicks)||0),0),
+      conversions: rowsR.reduce((s,r)=>s+(Number(r.conversions)||0),0),
+      revenue: rowsR.reduce((s,r)=>s+(Number(r.revenue)||0),0),
+      reach: rowsR.reduce((s,r)=>s+(Number(r.reach)||0),0),
+    };
+  }
+  const latest = aggInRange(from, to), prev = aggInRange(prevFrom, prevTo);
+  function calc(r){
+    if(!r) return {};
+    return {
+      ctr: r.impressions ? r.clicks/r.impressions*100 : null,
+      cpc: r.clicks ? r.spend/r.clicks : null,
+      cpm: r.impressions ? r.spend/r.impressions*1000 : null,
+      cpa: r.conversions ? r.spend/r.conversions : null,
+      roas: (r.revenue && r.spend) ? r.revenue/r.spend : null,
+    };
+  }
+  const c = calc(latest), cp = calc(prev);
+  document.getElementById('adsKpis').innerHTML = [
+    ['Витрати', fmtMoney(latest?.spend), deltaHtml(latest?.spend, prev?.spend)],
+    ['Покази', fmtNum(latest?.impressions), deltaHtml(latest?.impressions, prev?.impressions)],
+    ['Кліки', fmtNum(latest?.clicks), deltaHtml(latest?.clicks, prev?.clicks)],
+    ['CTR', c.ctr!==null&&c.ctr!==undefined?c.ctr.toFixed(2)+'%':'—', deltaHtml(c.ctr, cp.ctr)],
+    ['CPC', c.cpc?fmtMoney(c.cpc):'—', deltaHtml(c.cpc, cp.cpc)],
+    ['CPM', c.cpm?fmtMoney(c.cpm):'—', deltaHtml(c.cpm, cp.cpm)],
+    ['Конверсії', fmtNum(latest?.conversions), deltaHtml(latest?.conversions, prev?.conversions)],
+    ['CPA', c.cpa?fmtMoney(c.cpa):'—', deltaHtml(c.cpa, cp.cpa)],
+    ['ROAS', c.roas!==null&&c.roas!==undefined?c.roas.toFixed(2)+'x':'—', deltaHtml(c.roas, cp.roas)],
+  ].map(([l,v,d])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d}</div>`).join('');
+
+  destroyChart('adsChartInst');
+  window.adsChartInst = new Chart(document.getElementById('adsChart'), {
+    type:'bar',
+    data:{ labels: sorted.map(r=>fmtDate(r.period_start)),
+      datasets:[
+        {label:'Витрати (₴)', data:sorted.map(r=>r.spend), backgroundColor:'#8431F5', borderRadius:6, yAxisID:'y'},
+        {label:'Кліки', data:sorted.map(r=>r.clicks), type:'line', borderColor:'#16A34A', yAxisID:'y1', tension:.35},
+      ]},
+    options:{plugins:{legend:{position:'top', labels:{boxWidth:10,font:{family:'Nunito',weight:700}}}},
+      scales:{ y:{beginAtZero:true, position:'left', grid:{color:'#F0EBFA'}}, y1:{beginAtZero:true, position:'right', grid:{display:false}}, x:{grid:{display:false}} }}
+  });
+
+  const tableRows = [...rowsForTable].sort((a,b)=>new Date(b.period_start)-new Date(a.period_start));
+  if(tableRows.length===0){
+    document.getElementById('adsTable').innerHTML = `<div class="empty-state"><div class="e-icon">📢</div>Ще немає записів для ${PLATFORM_LABELS[currentAdsTab]}${currentAdsPark==='all'?'':' · '+PARK_LABELS[currentAdsPark]}.</div>`;
+    document.getElementById('adsCampaignChartCard').style.display = 'none';
+    destroyChart('adsCampaignChartInst');
+  } else {
+    // group rows by period
+    const groups = [];
+    const groupMap = {};
+    tableRows.forEach(r=>{
+      const key = r.period_start+'|'+r.period_end;
+      if(!groupMap[key]){ groupMap[key] = {period_start:r.period_start, period_end:r.period_end, rows:[]}; groups.push(groupMap[key]); }
+      groupMap[key].rows.push(r);
+    });
+
+    document.getElementById('adsTable').innerHTML = groups.map(g=>{
+      const totalSpend = g.rows.reduce((s,r)=>s+(Number(r.spend)||0),0);
+      const totalImp = g.rows.reduce((s,r)=>s+(Number(r.impressions)||0),0);
+      const totalClicks = g.rows.reduce((s,r)=>s+(Number(r.clicks)||0),0);
+      const totalCtr = totalImp ? (totalClicks/totalImp*100).toFixed(2)+'%' : '—';
+      const rowsHtml = g.rows.map(r=>{
+        const ctr = r.impressions ? (r.clicks/r.impressions*100).toFixed(2)+'%' : '—';
+        const parkLabel = r.park ? (PARK_LABELS[r.park]||r.park) : 'Бренд загалом';
+        return `<tr><td>${r.campaign_name||'—'}</td><td><span class="pill-source">${parkLabel}</span></td><td>${fmtMoney(r.spend)}</td><td>${fmtNum(r.impressions)}</td><td>${fmtNum(r.reach)}</td><td>${fmtNum(r.clicks)}</td><td>${ctr}</td><td>${fmtNum(r.conversions)}</td>
+        <td><button class="btn-icon" onclick='editAds(${r.id})'>✏️</button><button class="btn-icon" onclick='deleteAds(${r.id})'>🗑</button></td></tr>`;
+      }).join('');
+      return `<div class="period-block">
+        <div class="period-header">
+          <div class="period-dates">📅 ${fmtDate(g.period_start)} — ${fmtDate(g.period_end)}</div>
+          <div class="period-totals">
+            <span class="period-chip">${fmtMoney(totalSpend)} витрат</span>
+            <span class="period-chip">${fmtNum(totalImp)} показів</span>
+            <span class="period-chip">${totalCtr} CTR</span>
+            <span class="period-chip">${g.rows.length} ${g.rows.length===1?'кампанія':'кампаній'}</span>
+          </div>
+        </div>
+        <table class="campaign-card-table"><thead><tr><th>Кампанія</th><th>Комплекс</th><th>Витрати</th><th>Покази</th><th>Охоплення</th><th>Кліки</th><th>CTR</th><th>Конверсії</th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody></table>
+      </div>`;
+    }).join('');
+
+    // campaign comparison chart for the most recent period
+    const latestGroup = groups[0];
+    if(latestGroup.rows.length > 1){
+      document.getElementById('adsCampaignChartCard').style.display = 'block';
+      document.getElementById('adsCampaignChartTitle').textContent =
+        `Порівняння кампаній · ${fmtDate(latestGroup.period_start)} — ${fmtDate(latestGroup.period_end)}`;
+      const campRows = [...latestGroup.rows].sort((a,b)=>(b.spend||0)-(a.spend||0));
+      destroyChart('adsCampaignChartInst');
+      window.adsCampaignChartInst = new Chart(document.getElementById('adsCampaignChart'), {
+        type:'bar',
+        data:{ labels: campRows.map(r=>r.campaign_name||'Без назви'),
+          datasets:[
+            {label:'Витрати (₴)', data:campRows.map(r=>r.spend), backgroundColor:'#8431F5', borderRadius:6},
+            {label:'Кліки', data:campRows.map(r=>r.clicks), backgroundColor:'#B37CFA', borderRadius:6},
+          ]},
+        options:{indexAxis:'y', plugins:{legend:{position:'top', labels:{boxWidth:10,font:{family:'Nunito',weight:700}}}},
+          scales:{ x:{beginAtZero:true, grid:{color:'#F0EBFA'}}, y:{grid:{display:false}} }}
+      });
+    } else {
+      document.getElementById('adsCampaignChartCard').style.display = 'none';
+      destroyChart('adsCampaignChartInst');
+    }
+  }
+}
+async function deleteAds(id){ if(await dbDelete('ads_stats', id)) loadAds(); }
+function editAds(id){ const r = adsCache.find(x=>x.id===id); if(r) openAdsForm(r); }
+function openAdsForm(existing){
+  const isEdit = !!existing;
+  const parkOptionsHtml = '<option value="">Без прив\u2019язки (бренд загалом)</option>' + PARK_KEYS.map(k=>`<option value="${k}">${PARK_LABELS[k]}</option>`).join('');
+  renderModal(isEdit ? `Редагувати запис — ${PLATFORM_LABELS[currentAdsTab]}` : `Новий запис — ${PLATFORM_LABELS[currentAdsTab]}`, `
+    <div class="field-row">
+      <div class="field"><label>Початок періоду</label><input type="date" id="f_period_start" required></div>
+      <div class="field"><label>Кінець періоду</label><input type="date" id="f_period_end" required></div>
+    </div>
+    <div class="field"><label>Назва кампанії (необов'язково)</label><input type="text" id="f_campaign_name" placeholder="напр. Троєщина — День народження липень"></div>
+    <div class="field"><label>Комплекс, для якого ця кампанія</label><select id="f_park">${parkOptionsHtml}</select></div>
+    <div class="field-row">
+      <div class="field"><label>Витрати (₴)</label><input type="number" step="0.01" id="f_spend"></div>
+      <div class="field"><label>Покази</label><input type="number" id="f_impressions"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Охоплення</label><input type="number" id="f_reach"></div>
+      <div class="field"><label>Кліки</label><input type="number" id="f_clicks"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Конверсії</label><input type="number" id="f_conversions"></div>
+      <div class="field"><label>Дохід (₴, необов'язково)</label><input type="number" step="0.01" id="f_revenue"></div>
+    </div>
+  `, async ()=>{
+    const row = {
+      platform: currentAdsTab, park: fVal('f_park'), campaign_name: fVal('f_campaign_name'),
+      period_start: fVal('f_period_start'), period_end: fVal('f_period_end'),
+      spend: fVal('f_spend'), impressions: fVal('f_impressions'), reach: fVal('f_reach'),
+      clicks: fVal('f_clicks'), conversions: fVal('f_conversions'), revenue: fVal('f_revenue'),
+      source: isEdit ? existing.source : 'manual', entered_by: myName(),
+    };
+    if(!row.period_start || !row.period_end){ toast('Вкажи період'); return; }
+    if(isEdit){
+      if(await dbUpdate('ads_stats', existing.id, row)){ closeModal(); loadAds(); }
+    } else {
+      if(await dbInsert('ads_stats', row)){ closeModal(); loadAds(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({
+      f_period_start: existing.period_start, f_period_end: existing.period_end,
+      f_campaign_name: existing.campaign_name, f_park: existing.park || '',
+      f_spend: existing.spend, f_impressions: existing.impressions, f_reach: existing.reach,
+      f_clicks: existing.clicks, f_conversions: existing.conversions, f_revenue: existing.revenue,
+    });
+  }
+}
+
+/* ============================================================
+   APP
+   ============================================================ */
+let currentAppPark = 'all';
+function switchAppPark(park){ currentAppPark = park; loadApp(); }
+let appCache = [];
+async function loadApp(){
+  const allRows = await dbSelect('app_stats');
+  appCache = allRows;
+  const rowsForTable = currentAppPark==='all' ? allRows : allRows.filter(r=>r.park===currentAppPark);
+  const sorted = currentAppPark==='all'
+    ? aggregateByPeriod(allRows, ['downloads','new_users','active_users'])
+    : [...rowsForTable].sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+  const [from, to] = ensureRangeDefaults('appstats', sorted);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+  const downloadsNow = sumInRange(sorted,'downloads',from,to), downloadsPrev = sumInRange(sorted,'downloads',prevFrom,prevTo);
+  const newUsersNow = sumInRange(sorted,'new_users',from,to), newUsersPrev = sumInRange(sorted,'new_users',prevFrom,prevTo);
+  const activeNow = latestInRange(sorted,from,to), activePrev = latestInRange(sorted,prevFrom,prevTo);
+  document.getElementById('appKpis').innerHTML = [
+    ['Завантаження', fmtNum(downloadsNow), deltaHtml(downloadsNow, downloadsPrev)],
+    ['Нові користувачі', fmtNum(newUsersNow), deltaHtml(newUsersNow, newUsersPrev)],
+    ['Активні користувачі', fmtNum(activeNow?.active_users), deltaHtml(activeNow?.active_users, activePrev?.active_users)],
+  ].map(([l,v,d])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d}</div>`).join('');
+
+  destroyChart('appChartInst');
+  window.appChartInst = new Chart(document.getElementById('appChart'), {
+    type:'line',
+    data:{ labels: sorted.map(r=>fmtDate(r.period_start)),
+      datasets:[{label:'Завантаження', data:sorted.map(r=>r.downloads), borderColor:'#8431F5', backgroundColor:'rgba(132,49,245,.08)', fill:true, tension:.35}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#F0EBFA'}}, x:{grid:{display:false}}}}
+  });
+
+  const tableRows = [...rowsForTable].sort((a,b)=>new Date(b.period_start)-new Date(a.period_start));
+  document.getElementById('appTable').innerHTML = tableRows.length===0 ? `<div class="empty-state"><div class="e-icon">📲</div>Ще немає записів${currentAppPark==='all'?'':' для '+PARK_LABELS[currentAppPark]}.</div>` :
+    `<table><thead><tr><th>Період</th><th>Комплекс</th><th>Завантаження</th><th>Нові користувачі</th><th>Активні</th><th></th></tr></thead><tbody>
+      ${tableRows.map(r=>`<tr><td>${fmtDate(r.period_start)} — ${fmtDate(r.period_end)}</td><td><span class="pill-source">${PARK_LABELS[r.park]||r.park||'—'}</span></td><td>${fmtNum(r.downloads)}</td><td>${fmtNum(r.new_users)}</td><td>${fmtNum(r.active_users)}</td>
+      <td><button class="btn-icon" onclick='editApp(${r.id})'>✏️</button><button class="btn-icon" onclick='deleteApp(${r.id})'>🗑</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+async function deleteApp(id){ if(await dbDelete('app_stats', id)) loadApp(); }
+function editApp(id){ const r = appCache.find(x=>x.id===id); if(r) openAppForm(r); }
+function openAppForm(existing){
+  const isEdit = !!existing;
+  const parkOptionsHtml = PARK_KEYS.map(k=>`<option value="${k}">${PARK_LABELS[k]}</option>`).join('');
+  renderModal(isEdit ? 'Редагувати запис — Застосунок' : 'Новий запис — Застосунок', `
+    <div class="field-row">
+      <div class="field"><label>Початок періоду</label><input type="date" id="f_period_start" required></div>
+      <div class="field"><label>Кінець періоду</label><input type="date" id="f_period_end" required></div>
+    </div>
+    <div class="field"><label>Комплекс</label><select id="f_park">${parkOptionsHtml}</select></div>
+    <div class="field"><label>Завантаження</label><input type="number" id="f_downloads"></div>
+    <div class="field-row">
+      <div class="field"><label>Нові користувачі</label><input type="number" id="f_new_users"></div>
+      <div class="field"><label>Активні користувачі</label><input type="number" id="f_active_users"></div>
+    </div>
+  `, async ()=>{
+    const row = { period_start: fVal('f_period_start'), period_end: fVal('f_period_end'), park: fVal('f_park'),
+      downloads: fVal('f_downloads'), new_users: fVal('f_new_users'), active_users: fVal('f_active_users'), entered_by: myName() };
+    if(!row.period_start || !row.period_end){ toast('Вкажи період'); return; }
+    if(isEdit){
+      if(await dbUpdate('app_stats', existing.id, row)){ closeModal(); loadApp(); }
+    } else {
+      if(await dbInsert('app_stats', row)){ closeModal(); loadApp(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({
+      f_period_start: existing.period_start, f_period_end: existing.period_end, f_park: existing.park,
+      f_downloads: existing.downloads, f_new_users: existing.new_users, f_active_users: existing.active_users,
+    });
+  }
+}
+
+/* ============================================================
+   PUSH
+   ============================================================ */
+let pushCache = [];
+async function loadPush(){
+  const rows = await dbSelect('push_campaigns');
+  pushCache = rows;
+  const sorted = [...rows].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const [from, to] = ensureRangeDefaults('push', sorted, 'date');
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+  function aggRange(f, t){
+    const rowsR = rowsInRange(sorted, f, t, 'date');
+    return {
+      recipients: rowsR.reduce((s,r)=>s+(Number(r.recipients)||0),0),
+      delivered: rowsR.reduce((s,r)=>s+(Number(r.delivered)||0),0),
+      opened: rowsR.reduce((s,r)=>s+(Number(r.opened)||0),0),
+      clicks: rowsR.reduce((s,r)=>s+(Number(r.clicks)||0),0),
+      count: rowsR.length,
+    };
+  }
+  const latest = aggRange(from, to), prev = aggRange(prevFrom, prevTo);
+  function calc(r){ return { openRate: r.delivered?r.opened/r.delivered*100:null, ctr: r.delivered?( (r.clicks||0)/r.delivered*100):null }; }
+  const c = calc(latest), cp = calc(prev);
+  document.getElementById('pushKpis').innerHTML = [
+    ['Кампаній за період', fmtNum(latest.count), ''],
+    ['Отримувачі', fmtNum(latest.recipients), deltaHtml(latest.recipients, prev.recipients)],
+    ['Delivered', fmtNum(latest.delivered), deltaHtml(latest.delivered, prev.delivered)],
+    ['Opened', fmtNum(latest.opened), deltaHtml(latest.opened, prev.opened)],
+    ['Open Rate', c.openRate!==null&&c.openRate!==undefined?c.openRate.toFixed(1)+'%':'—', deltaHtml(c.openRate, cp.openRate)],
+    ['CTR', c.ctr!==null&&c.ctr!==undefined?c.ctr.toFixed(1)+'%':'—', deltaHtml(c.ctr, cp.ctr)],
+  ].map(([l,v,d])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d}</div>`).join('');
+
+  document.getElementById('pushTable').innerHTML = sorted.length===0 ? `<div class="empty-state"><div class="e-icon">🔔</div>Ще немає кампаній.</div>` :
+    `<table><thead><tr><th>Дата</th><th>Назва</th><th>Отримувачі</th><th>Delivered</th><th>Opened</th><th>Open Rate</th><th></th></tr></thead><tbody>
+      ${[...sorted].reverse().map(r=>{
+        const or = r.delivered ? (r.opened/r.delivered*100).toFixed(1)+'%' : '—';
+        return `<tr><td>${fmtDate(r.date)}</td><td>${r.name}</td><td>${fmtNum(r.recipients)}</td><td>${fmtNum(r.delivered)}</td><td>${fmtNum(r.opened)}</td><td>${or}</td>
+        <td><button class="btn-icon" onclick='editPush(${r.id})'>✏️</button><button class="btn-icon" onclick='deletePush(${r.id})'>🗑</button></td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+}
+async function deletePush(id){ if(await dbDelete('push_campaigns', id)) loadPush(); }
+function editPush(id){ const r = pushCache.find(x=>x.id===id); if(r) openPushForm(r); }
+function openPushForm(existing){
+  const isEdit = !!existing;
+  renderModal(isEdit ? 'Редагувати push-кампанію' : 'Нова push-кампанія', `
+    <div class="field-row">
+      <div class="field"><label>Дата</label><input type="date" id="f_date" required></div>
+      <div class="field"><label>Назва</label><input type="text" id="f_name" required></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Отримувачі</label><input type="number" id="f_recipients"></div>
+      <div class="field"><label>Delivered</label><input type="number" id="f_delivered"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Opened</label><input type="number" id="f_opened"></div>
+      <div class="field"><label>Кліки (необов'язково)</label><input type="number" id="f_clicks"></div>
+    </div>
+  `, async ()=>{
+    const row = { date: fVal('f_date'), name: fVal('f_name'), recipients: fVal('f_recipients'),
+      delivered: fVal('f_delivered'), opened: fVal('f_opened'), clicks: fVal('f_clicks'), entered_by: myName() };
+    if(!row.date || !row.name){ toast('Вкажи дату та назву'); return; }
+    if(isEdit){
+      if(await dbUpdate('push_campaigns', existing.id, row)){ closeModal(); loadPush(); }
+    } else {
+      if(await dbInsert('push_campaigns', row)){ closeModal(); loadPush(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({ f_date: existing.date, f_name: existing.name, f_recipients: existing.recipients,
+      f_delivered: existing.delivered, f_opened: existing.opened, f_clicks: existing.clicks });
+  }
+}
+
+/* ============================================================
+   LEADS
+   ============================================================ */
+let currentLeadsPark = 'all';
+function switchLeadsPark(park){ currentLeadsPark = park; loadLeads(); }
+let leadsCache = [];
+async function loadLeads(){
+  const allRows = await dbSelect('leads_stats');
+  leadsCache = allRows;
+  const rows = currentLeadsPark==='all' ? allRows : allRows.filter(r=>r.park===currentLeadsPark);
+  const sorted = [...rows].sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+  const [from, to] = ensureRangeDefaults('leads', sorted);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+  const now = sumInRange(sorted, 'count', from, to), prevV = sumInRange(sorted, 'count', prevFrom, prevTo);
+
+  document.getElementById('leadsKpis').innerHTML = [
+    ['Заявок за обраний період', fmtNum(now), deltaHtml(now, prevV)],
+  ].map(([l,v,d])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div>${d}</div>`).join('');
+
+  // chart: totals over periods
+  const byPeriod = {};
+  sorted.forEach(r=>{ byPeriod[r.period_start] = (byPeriod[r.period_start]||0) + (Number(r.count)||0); });
+  const periodKeysAsc = Object.keys(byPeriod).sort((a,b)=>new Date(a)-new Date(b));
+  destroyChart('leadsChartInst');
+  window.leadsChartInst = new Chart(document.getElementById('leadsChart'), {
+    type:'bar',
+    data:{ labels: periodKeysAsc.map(fmtDate), datasets:[{label:'Заявки', data:periodKeysAsc.map(k=>byPeriod[k]), backgroundColor:'#8431F5', borderRadius:6}] },
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#F0EBFA'}}, x:{grid:{display:false}}}}
+  });
+
+  // pie by source (within selected range)
+  const bySource = {};
+  rowsInRange(sorted, from, to).forEach(r=>{ bySource[r.source] = (bySource[r.source]||0) + (Number(r.count)||0); });
+  const sourceKeys = Object.keys(bySource);
+  destroyChart('leadsPieInst');
+  window.leadsPieInst = new Chart(document.getElementById('leadsPie'), {
+    type:'doughnut',
+    data:{ labels: sourceKeys.map(k=>SOURCE_LABELS[k]||k), datasets:[{data: sourceKeys.map(k=>bySource[k]),
+      backgroundColor:['#8431F5','#B37CFA','#16A34A','#F59E0B','#DC2626','#3B82F6']}] },
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{family:'Nunito',weight:700}}}}}
+  });
+
+  document.getElementById('leadsTable').innerHTML = sorted.length===0 ? `<div class="empty-state"><div class="e-icon">📝</div>Ще немає записів${currentLeadsPark==='all'?'':' для '+PARK_LABELS[currentLeadsPark]}.</div>` :
+    `<table><thead><tr><th>Період</th><th>Комплекс</th><th>Джерело</th><th>Кількість</th><th></th></tr></thead><tbody>
+      ${[...sorted].reverse().map(r=>`<tr><td>${fmtDate(r.period_start)} — ${fmtDate(r.period_end)}</td><td><span class="pill-source">${PARK_LABELS[r.park]||r.park||'—'}</span></td><td><span class="pill-source">${SOURCE_LABELS[r.source]||r.source}</span></td><td>${fmtNum(r.count)}</td>
+      <td><button class="btn-icon" onclick='editLeads(${r.id})'>✏️</button><button class="btn-icon" onclick='deleteLeads(${r.id})'>🗑</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+async function deleteLeads(id){ if(await dbDelete('leads_stats', id)) loadLeads(); }
+function editLeads(id){ const r = leadsCache.find(x=>x.id===id); if(r) openLeadsForm(r); }
+function openLeadsForm(existing){
+  const isEdit = !!existing;
+  const parkOptionsHtml = PARK_KEYS.map(k=>`<option value="${k}">${PARK_LABELS[k]}</option>`).join('');
+  renderModal(isEdit ? 'Редагувати запис — Заявки' : 'Новий запис — Заявки', `
+    <div class="field-row">
+      <div class="field"><label>Початок періоду</label><input type="date" id="f_period_start" required></div>
+      <div class="field"><label>Кінець періоду</label><input type="date" id="f_period_end" required></div>
+    </div>
+    <div class="field"><label>Комплекс</label><select id="f_park">${parkOptionsHtml}</select></div>
+    <div class="field">
+      <label>Джерело</label>
+      <select id="f_source">
+        <option value="website">Сайт</option>
+        <option value="app">Мобільний застосунок</option>
+        <option value="instagram">Instagram</option>
+        <option value="tiktok">TikTok</option>
+        <option value="phone">Телефон</option>
+        <option value="other">Інше</option>
+      </select>
+    </div>
+    <div class="field"><label>Кількість заявок</label><input type="number" id="f_count" required></div>
+  `, async ()=>{
+    const row = { period_start: fVal('f_period_start'), period_end: fVal('f_period_end'), park: fVal('f_park'), source: fVal('f_source'), count: fVal('f_count'), entered_by: myName() };
+    if(!row.period_start || !row.period_end || !row.count){ toast("Заповни всі обов'язкові поля"); return; }
+    if(isEdit){
+      if(await dbUpdate('leads_stats', existing.id, row)){ closeModal(); loadLeads(); }
+    } else {
+      if(await dbInsert('leads_stats', row)){ closeModal(); loadLeads(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({ f_period_start: existing.period_start, f_period_end: existing.period_end,
+      f_park: existing.park, f_source: existing.source, f_count: existing.count });
+  }
+}
+
+/* ============================================================
+   BUSINESS METRICS
+   ============================================================ */
+const BIZ_FIELDS = [
+  {key:'visits', label:'Відвідуваність', fmt:'num', agg:'sum'},
+  {key:'ltv', label:'LTV', fmt:'money', agg:'avg'},
+  {key:'roi', label:'ROI', fmt:'pct', agg:'avg'},
+  {key:'roas', label:'ROAS', fmt:'x', agg:'avg'},
+  {key:'avg_check_regular', label:'Серед. чек у комплексі', fmt:'money', agg:'avg'},
+  {key:'avg_check_party', label:'Серед. чек свята', fmt:'money', agg:'avg'},
+  {key:'csi', label:'CSI', fmt:'pct', agg:'avg'},
+  {key:'csi_birthday', label:'CSI днів народження', fmt:'pct', agg:'avg'},
+  {key:'new_clients', label:'Нові клієнти в базі', fmt:'num', agg:'sum'},
+  {key:'database_size', label:'Розмір бази', fmt:'num', agg:'latest'},
+  {key:'website_visits', label:'Відвідування сайту', fmt:'num', agg:'sum'},
+  {key:'lead_to_sale_conversion', label:'Конверсія ліда в продаж', fmt:'pct', agg:'avg'},
+  {key:'cac', label:'CAC', fmt:'money', agg:'avg'},
+  {key:'authorized_checkout_pct', label:'% авториз. на касі', fmt:'pct', agg:'avg'},
+];
+function fmtBiz(val, fmt){
+  if(val===null||val===undefined||val==='') return '—';
+  const n = Number(val);
+  if(fmt==='money') return fmtMoney(n);
+  if(fmt==='pct') return n.toFixed(1)+'%';
+  if(fmt==='x') return n.toFixed(2)+'x';
+  return fmtNum(n);
+}
+let currentBusinessPark = 'troieshchyna';
+function switchBusinessPark(park){
+  currentBusinessPark = park;
+  document.querySelectorAll('#businessTabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.park===park));
+  document.getElementById('businessFrom').value = ''; document.getElementById('businessTo').value = '';
+  loadBusiness();
+}
+let businessCache = [];
+async function loadBusiness(){
+  const rows = await dbSelect('business_metrics', {park: currentBusinessPark});
+  businessCache = rows;
+  const sorted = [...rows].sort((a,b)=>new Date(a.period_start)-new Date(b.period_start));
+  const [from, to] = ensureRangeDefaults('business', sorted);
+  const [prevFrom, prevTo] = prevRangeOf(from, to);
+
+  function valueFor(field, agg, f, t){
+    const inRange = rowsInRange(sorted, f, t);
+    if(agg==='sum') return inRange.reduce((s,r)=>s+(Number(r[field])||0),0);
+    if(agg==='avg') return avgField(inRange, field);
+    if(agg==='latest'){ const l = latestInRange(sorted, f, t); return l ? l[field] : null; }
+  }
+
+  document.getElementById('businessKpis').innerHTML = BIZ_FIELDS.map(f=>{
+    const v = valueFor(f.key, f.agg, from, to), pv = valueFor(f.key, f.agg, prevFrom, prevTo);
+    return `<div class="kpi-card"><div class="kpi-label">${f.label}</div><div class="kpi-value">${fmtBiz(v,f.fmt)}</div>${deltaHtml(v!==null?Number(v):null, pv!==null?Number(pv):null)}</div>`;
+  }).join('');
+
+  const metricSel = document.getElementById('businessMetricSelect');
+  const metricKey = metricSel.value;
+  const metricInfo = BIZ_FIELDS.find(f=>f.key===metricKey) || BIZ_FIELDS[0];
+  destroyChart('businessChartInst');
+  window.businessChartInst = new Chart(document.getElementById('businessChart'), {
+    type:'line',
+    data:{ labels: sorted.map(r=>fmtDate(r.period_start)),
+      datasets:[{label:metricInfo.label, data:sorted.map(r=>r[metricKey]), borderColor:'#8431F5', backgroundColor:'rgba(132,49,245,.08)', fill:true, tension:.35, pointRadius:3, pointBackgroundColor:'#8431F5'}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#F0EBFA'}}, x:{grid:{display:false}}}}
+  });
+  metricSel.onchange = loadBusiness;
+
+  const tableRows = [...sorted].reverse();
+  document.getElementById('businessTable').innerHTML = tableRows.length===0 ? `<div class="empty-state"><div class="e-icon">📈</div>Ще немає записів для ${PARK_LABELS[currentBusinessPark]}.</div>` :
+    `<table><thead><tr><th>Період</th>${BIZ_FIELDS.map(f=>`<th>${f.label}</th>`).join('')}<th></th></tr></thead><tbody>
+      ${tableRows.map(r=>`<tr><td>${fmtDate(r.period_start)} — ${fmtDate(r.period_end)}</td>${BIZ_FIELDS.map(f=>`<td>${fmtBiz(r[f.key],f.fmt)}</td>`).join('')}
+      <td><button class="btn-icon" onclick='editBusiness(${r.id})'>✏️</button><button class="btn-icon" onclick='deleteBusiness(${r.id})'>🗑</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+async function deleteBusiness(id){ if(await dbDelete('business_metrics', id)) loadBusiness(); }
+function editBusiness(id){ const r = businessCache.find(x=>x.id===id); if(r) openBusinessForm(r); }
+function openBusinessForm(existing){
+  const isEdit = !!existing;
+  renderModal(isEdit ? `Редагувати запис — ${PARK_LABELS[currentBusinessPark]}` : `Новий запис — ${PARK_LABELS[currentBusinessPark]}`, `
+    <div class="field-row">
+      <div class="field"><label>Початок періоду</label><input type="date" id="f_period_start" required></div>
+      <div class="field"><label>Кінець періоду</label><input type="date" id="f_period_end" required></div>
+    </div>
+    <div style="font-weight:800;font-size:13px;color:var(--purple-dark);margin:14px 0 8px;">Відвідуваність та фінанси</div>
+    <div class="field-row">
+      <div class="field"><label>Відвідуваність</label><input type="number" id="f_visits"></div>
+      <div class="field"><label>LTV (₴)</label><input type="number" step="0.01" id="f_ltv"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>ROI (%)</label><input type="number" step="0.01" id="f_roi"></div>
+      <div class="field"><label>ROAS</label><input type="number" step="0.01" id="f_roas"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Серед. чек у комплексі (₴)</label><input type="number" step="0.01" id="f_avg_check_regular"></div>
+      <div class="field"><label>Серед. чек свята (₴)</label><input type="number" step="0.01" id="f_avg_check_party"></div>
+    </div>
+    <div class="field"><label>CAC (₴)</label><input type="number" step="0.01" id="f_cac"></div>
+    <div style="font-weight:800;font-size:13px;color:var(--purple-dark);margin:14px 0 8px;">Якість обслуговування</div>
+    <div class="field-row">
+      <div class="field"><label>CSI (%)</label><input type="number" step="0.01" id="f_csi"></div>
+      <div class="field"><label>CSI днів народження (%)</label><input type="number" step="0.01" id="f_csi_birthday"></div>
+    </div>
+    <div style="font-weight:800;font-size:13px;color:var(--purple-dark);margin:14px 0 8px;">Клієнтська база та конверсія</div>
+    <div class="field-row">
+      <div class="field"><label>Нові клієнти в базі</label><input type="number" id="f_new_clients"></div>
+      <div class="field"><label>Розмір бази</label><input type="number" id="f_database_size"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Відвідування сайту</label><input type="number" id="f_website_visits"></div>
+      <div class="field"><label>Конверсія ліда в продаж (%)</label><input type="number" step="0.01" id="f_lead_to_sale_conversion"></div>
+    </div>
+    <div class="field"><label>% авторизованих на касі</label><input type="number" step="0.01" id="f_authorized_checkout_pct"></div>
+  `, async ()=>{
+    const row = {
+      park: currentBusinessPark,
+      period_start: fVal('f_period_start'), period_end: fVal('f_period_end'),
+      visits: fVal('f_visits'), ltv: fVal('f_ltv'), roi: fVal('f_roi'), roas: fVal('f_roas'),
+      avg_check_regular: fVal('f_avg_check_regular'), avg_check_party: fVal('f_avg_check_party'), cac: fVal('f_cac'),
+      csi: fVal('f_csi'), csi_birthday: fVal('f_csi_birthday'),
+      new_clients: fVal('f_new_clients'), database_size: fVal('f_database_size'), website_visits: fVal('f_website_visits'),
+      lead_to_sale_conversion: fVal('f_lead_to_sale_conversion'), authorized_checkout_pct: fVal('f_authorized_checkout_pct'),
+      entered_by: myName(),
+    };
+    if(!row.period_start || !row.period_end){ toast('Вкажи період'); return; }
+    if(isEdit){
+      if(await dbUpdate('business_metrics', existing.id, row)){ closeModal(); loadBusiness(); }
+    } else {
+      if(await dbInsert('business_metrics', row)){ closeModal(); loadBusiness(); }
+    }
+  });
+  if(isEdit){
+    fillModalFields({
+      f_period_start: existing.period_start, f_period_end: existing.period_end,
+      f_visits: existing.visits, f_ltv: existing.ltv, f_roi: existing.roi, f_roas: existing.roas,
+      f_avg_check_regular: existing.avg_check_regular, f_avg_check_party: existing.avg_check_party, f_cac: existing.cac,
+      f_csi: existing.csi, f_csi_birthday: existing.csi_birthday,
+      f_new_clients: existing.new_clients, f_database_size: existing.database_size, f_website_visits: existing.website_visits,
+      f_lead_to_sale_conversion: existing.lead_to_sale_conversion, f_authorized_checkout_pct: existing.authorized_checkout_pct,
+    });
+  }
+}
+
+
+const DASHBOARD_PASSWORD = 'smilemarketing2026';
+function tryLogin(){
+  const val = document.getElementById('loginPassword').value;
+  if(val === DASHBOARD_PASSWORD){
+    localStorage.setItem('sp_marketing_authed', '1');
+    unlockDashboard();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+function unlockDashboard(){
+  document.getElementById('loginGate').style.display = 'none';
+  document.querySelector('.app').classList.add('unlocked');
+  loadOverview();
+}
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+
+/* ============ INIT ============ */
+if(localStorage.getItem('sp_marketing_authed') === '1'){
+  unlockDashboard();
+}
+</script>
+</body>
+</html>
